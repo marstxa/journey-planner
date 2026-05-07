@@ -14,7 +14,7 @@
 
 ## How to run
 _To run App backend and frontend must be running simultaneously on different windows_
-*`git clone https://github.com/marstxa/uni-journey-planner`
+* `git clone https://github.com/marstxa/uni-journey-planner`
 
 ### CLI (run inside /cli folder)
 * `javac -d bin src/Main.java src/modules/*.java`
@@ -27,8 +27,8 @@ _To run App backend and frontend must be running simultaneously on different win
 #### Important!
 If you don't have npm or nodejs you can install it with with the following sequence of commands
 1. **Install NVM:** `curl -o- [https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh](https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh) | bash`
-2.**Restart Terminal or run:** source ~/.bashrc
-3.**Install Node:** `nvm install --lts`
+2. **Restart Terminal or run:** source ~/.bashrc
+3. **Install Node:** `nvm install --lts`
 
 #### Launching App
 * `npm install`
