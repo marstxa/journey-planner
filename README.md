@@ -16,8 +16,8 @@
 git clone https://github.com/marstxa/uni-journey-planner
 
 ### CLI (run inside /cli folder)
-javac -d bin src/Main.java src/modules/*.java
-java -cp bin Main
+* javac -d bin src/Main.java src/modules/*.java
+* java -cp bin Main
 
 ### BACKEND (run inside /backend folder)
 ./mvnw clean spring-boot:run
