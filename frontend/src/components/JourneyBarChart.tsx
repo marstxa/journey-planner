@@ -96,7 +96,7 @@ export default function JourneyBarChart({ path }: JourneyChartProps) {
     };
 
     return (
-        <div className="card bg-base-100 shadow-xl mt-8">
+        <div className="card bg-base-100 shadow-xl mt-8 border-t-4 border-info">
             <div className="card-body">
                 <Bar data={data} options={options} />
             </div>

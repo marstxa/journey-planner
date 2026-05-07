@@ -4,6 +4,7 @@ import JourneyBarChart from "./JourneyBarChart";
 
 // toast library
 import { ToastContainer, toast } from "react-toastify";
+import JourneyLineChart from "./JourneyLineChart";
 interface RouteStep {
     station: string;
     line: string;
@@ -53,6 +54,12 @@ export default function JourneyPlanner() {
     const [end, setEnd] = useState<string>("");
     const [optimisedRoute, setOptimisedRoute] = useState<boolean>(true);
 
+    // dual fetch both route options
+    const [fastestPath, setFastestPath] = useState<RouteData | null>(null);
+    const [fewChangesPath, setFewChangesPath] = useState<RouteData | null>(
+        null,
+    );
+
     const [closedStation, setClosedStation] = useState<string>("");
     const [delayFrom, setDelayFrom] = useState<string>("");
     const [delayTo, setDelayTo] = useState<string>("");
@@ -62,6 +69,9 @@ export default function JourneyPlanner() {
     const [routeData, setRouteData] = useState<RouteData | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+
+    // get which path to show in the UI based on radio button
+    const currentRouteData = optimisedRoute ? fastestPath : fewChangesPath;
 
     useEffect(() => {
         // only search if user has actually typed stations
@@ -78,51 +88,50 @@ export default function JourneyPlanner() {
 
         // call API
         try {
-            const response = await axios.get<RouteData>(
-                "http://localhost:8080/api/journey/route",
-                {
-                    params: {
-                        start: start,
-                        end: end,
-                        optimisedRoute: optimisedRoute,
-                        // i been debugging for an hour and i forgot to add my new var lmao im so stupid im losing my mind
-                        station: closedStation,
-                        delayFrom: delayFrom,
-                        delayTo: delayTo,
-                        delayTime: delayTime,
+            const baseParams = {
+                start: start,
+                end: end,
+                station: closedStation,
+                delayFrom: delayFrom,
+                delayTo: delayTo,
+                delayTime: delayTime,
+            };
+
+            // call api twice
+            const [fastestResponse, fewestResponse] = await Promise.all([
+                axios.get<RouteData>(
+                    "http://localhost:8080/api/journey/route",
+                    {
+                        params: { ...baseParams, optimisedRoute: true },
                     },
-                },
-            );
+                ),
+                axios.get<RouteData>(
+                    "http://localhost:8080/api/journey/route",
+                    {
+                        params: { ...baseParams, optimisedRoute: false },
+                    },
+                ),
+            ]);
 
-            // axios automatically parses json
-            setRouteData(response.data);
+            setFastestPath(fastestResponse.data);
+            setFewChangesPath(fewestResponse.data);
 
-            // toastify toast
             if (closedStation || delayTime > 0) {
                 toast.warning("Route calculated with network disruptions!", {
                     position: "top-right",
                     autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
                     theme: "light",
                 });
             }
         } catch (err: unknown) {
-            // messy if else statement
             if (axios.isAxiosError(err)) {
-                // if java sends our custom error map
                 const backendError = err.response?.data as ApiResponse;
                 const errorMsg =
                     backendError?.error || "Could not find a route.";
                 setError(errorMsg);
-
-                toast.error(errorMsg); // toast error message
+                toast.error(errorMsg);
             } else if (err instanceof Error) {
                 setError(err.message);
-            } else {
-                setError("An unexpected error ocurred");
             }
         } finally {
             setIsLoading(false);
@@ -282,33 +291,32 @@ export default function JourneyPlanner() {
             </div>
 
             {/* DISPLAY RESULTS */}
-            {routeData && (
-                <>
-                    <div className="card bg-base-100 shadow-xl">
+            {currentRouteData && fastestPath && fewChangesPath && (
+                <div className="flex flex-col gap-8 mt-8">
+                    <div className="card bg-base-100 shadow-xl border-t-4 border-secondary">
                         <div className="card-body">
                             <div className="flex justify-between items-center border-b pb-4 mb-4">
                                 <div>
                                     <h2 className="text-3xl font-bold text-secondary">
-                                        {routeData.totalTime} Mins
+                                        {currentRouteData.totalTime} Mins
                                     </h2>
-                                    <p className="text-gray-500">
+                                    <p className="text-gray-500 font-bold">
                                         Total Journey Time
                                     </p>
                                 </div>
                                 <div className="text-right">
                                     <h2 className="text-3xl font-bold">
-                                        {routeData.totalChanges}
+                                        {currentRouteData.totalChanges}
                                     </h2>
-                                    <p className="text-gray-500">
+                                    <p className="text-gray-500 font-bold">
                                         Total Changes
                                     </p>
                                 </div>
                             </div>
 
                             <ul className="steps steps-vertical">
-                                {routeData.path.map((step, index) => {
+                                {currentRouteData.path.map((step, index) => {
                                     const isWalking = step.line === "walking";
-                                    // helper function to get color
                                     const stepColor = getStepColorClass(
                                         step.line,
                                     );
@@ -322,7 +330,7 @@ export default function JourneyPlanner() {
                                                 <p className="font-bold text-lg">
                                                     {step.station}
                                                 </p>
-                                                <p className="text-sm opacity-70">
+                                                <p className="text-sm opacity-70 font-semibold">
                                                     {index === 0
                                                         ? "Start Journey"
                                                         : isWalking
@@ -336,8 +344,16 @@ export default function JourneyPlanner() {
                             </ul>
                         </div>
                     </div>
-                    <JourneyBarChart path={routeData.path} />
-                </>
+
+                    {/* THE BAR CHART */}
+                    <JourneyBarChart path={currentRouteData.path} />
+
+                    {/* THE LINE CHART */}
+                    <JourneyLineChart
+                        fastestPath={fastestPath.path}
+                        fewestPath={fewChangesPath.path}
+                    />
+                </div>
             )}
         </div>
     );
