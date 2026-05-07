@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import JourneyBarChart from "./JourneyBarChart";
 
+// toast library
+import { ToastContainer, toast } from "react-toastify";
 interface RouteStep {
     station: string;
     line: string;
@@ -51,6 +53,11 @@ export default function JourneyPlanner() {
     const [end, setEnd] = useState<string>("");
     const [optimisedRoute, setOptimisedRoute] = useState<boolean>(true);
 
+    const [closedStation, setClosedStation] = useState<string>("");
+    const [delayFrom, setDelayFrom] = useState<string>("");
+    const [delayTo, setDelayTo] = useState<string>("");
+    const [delayTime, setDelayTime] = useState<number>(0);
+
     // results state
     const [routeData, setRouteData] = useState<RouteData | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -78,18 +85,40 @@ export default function JourneyPlanner() {
                         start: start,
                         end: end,
                         optimisedRoute: optimisedRoute,
+                        // i been debugging for an hour and i forgot to add my new var lmao im so stupid im losing my mind
+                        station: closedStation,
+                        delayFrom: delayFrom,
+                        delayTo: delayTo,
+                        delayTime: delayTime,
                     },
                 },
             );
 
             // axios automatically parses json
             setRouteData(response.data);
+
+            // toastify toast
+            if (closedStation || delayTime > 0) {
+                toast.warning("Route calculated with network disruptions!", {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: "light",
+                });
+            }
         } catch (err: unknown) {
             // messy if else statement
             if (axios.isAxiosError(err)) {
                 // if java sends our custom error map
                 const backendError = err.response?.data as ApiResponse;
-                setError(backendError?.error || "Could not find a route.");
+                const errorMsg =
+                    backendError?.error || "Could not find a route.";
+                setError(errorMsg);
+
+                toast.error(errorMsg); // toast error message
             } else if (err instanceof Error) {
                 setError(err.message);
             } else {
@@ -101,9 +130,10 @@ export default function JourneyPlanner() {
     };
 
     return (
-        <div className="container mx-auto p-4 max-w-4xl">
+        <div className="container mx-auto p-4 max-w-4xl relative">
+            <ToastContainer />
             {/* INPUT FORM */}
-            <div className="card bg-base-100 shadow-xl mb-8">
+            <div className="card bg-base-100 shadow-xl mb-8 border-t-4 border-primary">
                 <div className="card-body">
                     <h2 className="card-title text-2xl text-neutral mb-4">
                         Plan Your Journey
@@ -134,12 +164,80 @@ export default function JourneyPlanner() {
                             ></input>
                         </div>
 
+                        {/* DELAYS MENU */}
+                        <div className="collapse collapse-arrow bg-base-200 rounded-box border border-base-300">
+                            <input type="checkbox" />
+                            <div className="collapse-title text-lg font-bold text-neutral">
+                                Network Disruption (Optional)
+                            </div>
+                            <div className="collapse-content flex flex-col gap-4">
+                                <div className="form-control w-full">
+                                    <label className="label">
+                                        <span className="label-text font-bold">
+                                            Close a Station
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Victoria"
+                                        className="input outline-0 w-full"
+                                        value={closedStation}
+                                        onChange={(e) =>
+                                            setClosedStation(e.target.value)
+                                        }
+                                    />
+                                </div>
+
+                                <div className="form-control w-full">
+                                    <label className="label">
+                                        <span className="label-text font-bold">
+                                            Add Delay
+                                        </span>
+                                    </label>
+                                    <div className="flex flex-col md:flex-row gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="From Station"
+                                            className="input outline-0 w-full"
+                                            value={delayFrom}
+                                            onChange={(e) =>
+                                                setDelayFrom(e.target.value)
+                                            }
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="To Station"
+                                            className="input outline-0 w-full"
+                                            value={delayTo}
+                                            onChange={(e) =>
+                                                setDelayTo(e.target.value)
+                                            }
+                                        />
+                                        <input
+                                            type="number"
+                                            placeholder="Mins"
+                                            className="input outline-0 w-24"
+                                            min="0"
+                                            value={
+                                                delayTime === 0 ? "" : delayTime
+                                            }
+                                            onChange={(e) =>
+                                                setDelayTime(
+                                                    parseInt(e.target.value),
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex gap-6 py-2">
                             <div className="form-control">
                                 <label className="label cursor-pointer gap-3">
                                     <input
                                         type="radio"
-                                        name="optimization"
+                                        name="optimisation"
                                         className="radio radio-primary"
                                         checked={optimisedRoute === true}
                                         onChange={() => setOptimisedRoute(true)}
@@ -154,7 +252,7 @@ export default function JourneyPlanner() {
                                 <label className="label cursor-pointer gap-3">
                                     <input
                                         type="radio"
-                                        name="optimization"
+                                        name="optimisation"
                                         className="radio radio-primary"
                                         checked={optimisedRoute === false}
                                         onChange={() =>
@@ -182,13 +280,6 @@ export default function JourneyPlanner() {
                     </form>
                 </div>
             </div>
-
-            {/* ERROR MESSAGE */}
-            {error && (
-                <div className="alert alert-error shadow-lg mb-8">
-                    <span>{error}</span>
-                </div>
-            )}
 
             {/* DISPLAY RESULTS */}
             {routeData && (

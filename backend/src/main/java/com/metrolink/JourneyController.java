@@ -33,9 +33,53 @@ public class JourneyController {
     public ResponseEntity<?> getRoute(
             @RequestParam String start,
             @RequestParam String end,
-            @RequestParam boolean optimisedRoute) {
+            @RequestParam boolean optimisedRoute,
+            @RequestParam(required = false, defaultValue = "") String station,
+            @RequestParam(required = false, defaultValue = "") String delayFrom,
+            @RequestParam(required = false, defaultValue = "") String delayTo,
+            @RequestParam(required = false, defaultValue = "0") Integer delayTime) {
 
-        RouteState finalState = MetrolinkDijkstra.findShortestRoute(graph, start, end, optimisedRoute);
+        // 🕵️‍♂️ THE SPY: Print exactly what Spring Boot receives!
+        System.out.println("\n--- DEBUGGER (please work :3) ---");
+        System.out.println("Start: [" + start + "]");
+        System.out.println("End: [" + end + "]");
+        System.out.println("Station to close received: [" + station + "]");
+
+        // close station
+        if (station != null && !station.isEmpty()) {
+            graph.closeStation(station);
+            System.out.println("Did the graph actually close it? " + graph.isClosed(station));
+        }
+
+        // close station
+        if (!station.isEmpty()) {
+            graph.closeStation(station);
+        }
+
+        // add delay
+        if (!delayTo.isEmpty() && !delayFrom.isEmpty() && delayTime != null) {
+            graph.addDelay(delayFrom, delayTo, delayTime);
+        }
+
+        if (graph.isClosed(start)) {
+            return ResponseEntity.badRequest().body(Map.of("error", start + " is currently closed."));
+        }
+        if (graph.isClosed(end)) {
+            return ResponseEntity.badRequest().body(Map.of("error", end + " is currently closed."));
+        }
+
+        RouteState finalState;
+        try {
+            finalState = MetrolinkDijkstra.findShortestRoute(graph, start, end, optimisedRoute);
+        } finally {
+            // cleanup
+            if (!station.isEmpty()) {
+                graph.openStation(station);
+            }
+            if (!delayFrom.isEmpty() && !delayTo.isEmpty() && delayTime != null && delayTime > 0) {
+                graph.removeDelay(delayFrom, delayTo);
+            }
+        }
 
         if (finalState == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "No route could be found."));

@@ -1,6 +1,11 @@
 package modules;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class MetrolinkGraph {
     // core data structure
@@ -41,21 +46,54 @@ public class MetrolinkGraph {
 
     // method to close stations
     public void closeStation(String station) {
-        closedStations.add(station);
+        if (station != null && !station.isEmpty()) {
+            closedStations.add(station.trim().toLowerCase());
+        }
+    }
+
+    // Method to open a station after the search is done
+    public void openStation(String station) {
+        if (station != null && !station.isEmpty()) {
+            closedStations.remove(station.trim().toLowerCase());
+        }
     }
 
     // method to add custom delays
     public void addDelay(String from, String to, double newTime) {
-        customDelays.put(from + "-" + to, newTime);
-        customDelays.put(to + "-" + from, newTime);
+        if (from != null && to != null) {
+            String stationA = from.trim().toLowerCase();
+            String stationB = to.trim().toLowerCase();
+
+            customDelays.put(stationA + "-" + stationB, newTime);
+            customDelays.put(stationB + "-" + stationA, newTime);
+        }
+    }
+
+    // Method to remove a delay after the search is done
+    public void removeDelay(String from, String to) {
+        if (from != null && to != null) {
+            String stationA = from.trim().toLowerCase();
+            String stationB = to.trim().toLowerCase();
+            customDelays.remove(stationA + "-" + stationB);
+            customDelays.remove(stationB + "-" + stationA);
+        }
     }
 
     // return true if station is closed
     public boolean isClosed(String station) {
-        return closedStations.contains(station);
+        if (station == null) {
+            return false;
+        }
+        return closedStations.contains(station.trim().toLowerCase());
     }
 
     public double getActualTime(String from, String to, double normalTime) {
-        return customDelays.getOrDefault(from + "-" + to, normalTime);
+        if (from == null || to == null) {
+            return normalTime;
+        }
+
+        String key = from.trim().toLowerCase() + "-" + to.trim().toLowerCase();
+        double extraDelay = customDelays.getOrDefault(key, 0.0);
+        return normalTime + extraDelay;
     }
 }
