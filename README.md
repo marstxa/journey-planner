@@ -13,15 +13,23 @@
 * **Frontend UI:** React (TypeScript), Vite, Tailwind CSS, DaisyUI, Chart.js, Axios
 
 ## How to run
-git clone https://github.com/marstxa/uni-journey-planner
+_To run App backend and frontend must be running simultaneously on different windows_
+*`git clone https://github.com/marstxa/uni-journey-planner`
 
 ### CLI (run inside /cli folder)
-* javac -d bin src/Main.java src/modules/*.java
-* java -cp bin Main
+* `javac -d bin src/Main.java src/modules/*.java`
+* `java -cp bin Main`
 
 ### BACKEND (run inside /backend folder)
-./mvnw clean spring-boot:run
+* `./mvnw clean spring-boot:run`
 
 ### FRONTEND (run inside /backend folder, must have npm and nodejs installed)
-npm install
-npm run dev
+#### Important!
+If you don't have npm or nodejs you can install it with with the following sequence of commands
+1. **Install NVM:** `curl -o- [https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh](https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh) | bash`
+2.**Restart Terminal or run:** source ~/.bashrc
+3.**Install Node:** `nvm install --lts`
+
+#### Launching App
+* `npm install`
+* `npm run dev`
