@@ -1,4 +1,4 @@
-package com.metrolink.controller;
+package com.metrolink;
 
 import java.util.ArrayList;
 import java.util.Collections;

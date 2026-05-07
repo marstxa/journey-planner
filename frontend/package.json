@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
     "aos": "^2.3.4",
+    "axios": "^1.16.0",
     "chartjs": "^0.3.24",
     "daisyui": "^5.5.19",
     "react": "^19.2.5",

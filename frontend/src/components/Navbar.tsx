@@ -1,7 +1,7 @@
 import logo from "../assets/mm-logo.png"
 import profile from "../assets/profile.jpg"
 
-function Navbar(){
+export default function Navbar(){
   return (
     <div className="navbar bg-base-300 shadow-sm">
       <div className="flex-1 flex items-center gap-2">
@@ -24,5 +24,3 @@ function Navbar(){
     </div>
   )
 }
-
-export default Navbar;
