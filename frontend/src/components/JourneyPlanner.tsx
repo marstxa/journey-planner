@@ -142,7 +142,10 @@ export default function JourneyPlanner() {
         <div className="container mx-auto p-4 max-w-4xl relative">
             <ToastContainer />
             {/* INPUT FORM */}
-            <div className="card bg-base-100 shadow-xl mb-8 border-t-4 border-primary">
+            <div
+                data-aos="fade-up"
+                className="card bg-base-100 shadow-xl mb-8 border-t-4 border-primary"
+            >
                 <div className="card-body">
                     <h2 className="card-title text-2xl text-neutral mb-4">
                         Plan Your Journey
@@ -292,7 +295,7 @@ export default function JourneyPlanner() {
 
             {/* DISPLAY RESULTS */}
             {currentRouteData && fastestPath && fewChangesPath && (
-                <div className="flex flex-col gap-8 mt-8">
+                <div data-aos="fade-right" className="flex flex-col gap-8 mt-8">
                     <div className="card bg-base-100 shadow-xl border-t-4 border-secondary">
                         <div className="card-body">
                             <div className="flex justify-between items-center border-b pb-4 mb-4">
