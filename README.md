@@ -136,7 +136,3 @@ A few decisions worth calling out, since the reasoning matters more than the dif
 - `backend/` and `cli/` currently maintain separate copies of the same pathfinding code (`MetrolinkGraph`, `MetrolinkDijkstra`, `RouteState`, `RouteConstraints`, `ReadMap`). Extracting these into a shared `metrolink-core` module both depend on is the next planned change.
 - Station name matching is case-insensitive on the CLI (fuzzy lookup against the loaded station list) but exact-match on the REST API — a station name typed with the wrong case into the web UI will currently fail to find a route rather than being corrected.
 - No persistence: closures and delays exist only for the lifetime of a single request/session; nothing is saved between runs.
-
-## License
-
-MIT
