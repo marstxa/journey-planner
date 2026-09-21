@@ -1,4 +1,4 @@
-// Entry point for REST API
+// Entry point for the REST API
 package com.metrolink;
 
 import java.util.HashSet;
@@ -17,7 +17,8 @@ public class MetrolinkApp {
         SpringApplication.run(MetrolinkApp.class, args);
     }
 
-    // Run on startup and keep it in memory
+    // Loaded once at startup and kept in memory. The graph itself is never
+    // mutated after this point — see MetrolinkGraph and RouteConstraints.
     @Bean
     public MetrolinkGraph metrolinkGraph() {
         MetrolinkGraph graph = new MetrolinkGraph();
@@ -25,7 +26,7 @@ public class MetrolinkApp {
         ReadMap.loadMapData("src/main/resources/utils/Metrolink_times_linecolour(in).csv", graph, new HashSet<>());
         ReadMap.loadWalkData("src/main/resources/utils/walktimes(in).csv", graph);
 
-        System.out.println("Metrolink Graph loaded into memory successfully");
+        System.out.println("Metrolink graph loaded into memory successfully");
         return graph;
     }
 }
