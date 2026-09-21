@@ -1,76 +1,93 @@
 package modules;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.PriorityQueue;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Set;
 
-public class MetrolinkDijkstra {
+public class ReadMap {
+    // Reads the Metrolink CSV format and populates the Dijkstra planner
 
-    // The per-line-change time penalty added when a route switches lines.
-    // Encourages the algorithm to prefer routes with fewer changes when
-    // times are otherwise close, without a full second cost function.
-    private static final double LINE_CHANGE_PENALTY_MINUTES = 2.0;
+    public static void loadMapData(String filePath, MetrolinkGraph graph, Set<String> extractedStations) {
+        String line;
+        String currentLineColor = null;
 
-    // Since users can choose between the fastest route or the one with the
-    // fewest changes, optimisedRoute selects which cost function to use.
-    public static RouteState findShortestRoute(
-            MetrolinkGraph graph,
-            String startStation,
-            String endStation,
-            boolean optimisedRoute,
-            RouteConstraints constraints) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            br.readLine(); // discard header row: From, To, Time (mins)
 
-        if (constraints.isClosed(startStation)) {
-            return null;
-        }
-        if (constraints.isClosed(endStation)) {
-            return null;
-        }
-
-        PriorityQueue<RouteState> queue = new PriorityQueue<>();
-
-        // Tracks the minimum cost to reach a station on a given line, so the
-        // algorithm can revisit a station if arriving via a different line
-        // (or after backtracking) turns out cheaper.
-        Map<String, Double> minCost = new HashMap<>();
-
-        queue.add(new RouteState(startStation, null, 0.0, 0.0, 0, null));
-
-        while (!queue.isEmpty()) {
-            RouteState current = queue.poll();
-
-            if (current.station.equals(endStation)) {
-                return current;
-            }
-
-            for (MetrolinkGraph.Connection conn : graph.getConnections(current.station)) {
-                if (constraints.isClosed(conn.destination)) {
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) {
                     continue;
                 }
 
-                double travelTime = constraints.getActualTime(current.station, conn.destination, conn.time);
-                int newChanges = current.changes;
+                String[] columns = line.split(",", -1);
 
-                boolean isLineChange = current.line != null && !current.line.equals(conn.line);
-                if (isLineChange) {
-                    travelTime += LINE_CHANGE_PENALTY_MINUTES;
-                    newChanges++;
-                }
+                if (columns.length >= 3 && columns[1].trim().isEmpty() && columns[2].trim().isEmpty()) {
+                    currentLineColor = columns[0].trim(); // this row is a new line's header
+                } else if (columns.length >= 3) {
+                    if (currentLineColor == null) {
+                        System.err.println("Warning: connection row appeared before any line header, skipping: " + line);
+                        continue;
+                    }
+                    try {
+                        String fromStation = columns[0].trim();
+                        String toStation = columns[1].trim();
+                        double travelTime = Double.parseDouble(columns[2].trim());
 
-                double newActualTime = current.actualTime + travelTime;
-                double newTotalCost = optimisedRoute ? newActualTime : newChanges;
+                        graph.addConnection(fromStation, toStation, currentLineColor, travelTime);
 
-                String stateKey = conn.destination + "_" + conn.line;
-
-                // Only enqueue this station-line pair again if we've found a
-                // cheaper way to reach it than any previous route did.
-                if (newTotalCost < minCost.getOrDefault(stateKey, Double.MAX_VALUE)) {
-                    minCost.put(stateKey, newTotalCost);
-                    queue.add(new RouteState(conn.destination, conn.line, newTotalCost, newActualTime, newChanges, current));
+                        extractedStations.add(fromStation);
+                        extractedStations.add(toStation);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Warning: could not parse travel time for row: " + line);
+                    }
                 }
             }
-        }
 
-        return null;
+            System.err.println("Map data loaded successfully");
+        } catch (IOException e) {
+            System.err.println("Could not read the file " + filePath);
+            System.err.println("Make sure the file exists in the correct directory; it should be in /utils by default");
+        }
+    }
+
+    public static void loadWalkData(String filePath, MetrolinkGraph graph) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String headerLine = br.readLine();
+            if (headerLine == null) {
+                return;
+            }
+
+            String[] headerStations = headerLine.split(",", -1); // destination stations, by column
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                String[] columns = line.split(",", -1);
+                String startStation = columns[0].trim(); // first column is the start station for this row
+
+                for (int i = 1; i < columns.length; i++) {
+                    String timeStr = columns[i].trim();
+                    if (timeStr.isEmpty()) {
+                        continue; // no walking time recorded between these two stations
+                    }
+
+                    try {
+                        double walkingTime = Double.parseDouble(timeStr);
+                        String endStation = headerStations[i].trim();
+                        // "walking" is used as the line name so the rest of the app can
+                        // tell a walked leg apart from a leg taken by train
+                        graph.addConnection(startStation, endStation, "walking", walkingTime);
+                    } catch (NumberFormatException e) {
+                        // not a number: ignore the cell
+                    }
+                }
+            }
+            System.out.println("Walking data loaded successfully");
+        } catch (IOException e) {
+            System.err.println("Could not read the walking file " + filePath);
+        }
     }
 }
