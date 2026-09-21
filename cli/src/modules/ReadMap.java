@@ -10,13 +10,10 @@ public class ReadMap {
 
     public static void loadMapData(String filePath, MetrolinkGraph graph, Set<String> extractedStations) {
         String line;
-        String currentLineColor = "idk";
+        String currentLineColor = null;
 
-        // Using try to ensure file is closed
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-
-            // read and discard first header row NOTE: From, To, Time (mins)
-            br.readLine();
+            br.readLine(); // discard header row: From, To, Time (mins)
 
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -26,43 +23,42 @@ public class ReadMap {
                 String[] columns = line.split(",", -1);
 
                 if (columns.length >= 3 && columns[1].trim().isEmpty() && columns[2].trim().isEmpty()) {
-                    currentLineColor = columns[0].trim(); // update state to a new line color
+                    currentLineColor = columns[0].trim(); // this row is a new line's header
                 } else if (columns.length >= 3) {
+                    if (currentLineColor == null) {
+                        System.err.println("Warning: connection row appeared before any line header, skipping: " + line);
+                        continue;
+                    }
                     try {
-                        String formStation = columns[0].trim();
+                        String fromStation = columns[0].trim();
                         String toStation = columns[1].trim();
                         double travelTime = Double.parseDouble(columns[2].trim());
 
-                        // add connection to graph
-                        graph.addConnection(formStation, toStation, currentLineColor, travelTime);
+                        graph.addConnection(fromStation, toStation, currentLineColor, travelTime);
 
-                        // add to set
-                        extractedStations.add(formStation);
+                        extractedStations.add(fromStation);
                         extractedStations.add(toStation);
                     } catch (NumberFormatException e) {
-                        // if it fails to parse the time (please don't)
-                        System.err.println("Warning: Could not parse time for row: " + line);
+                        System.err.println("Warning: could not parse travel time for row: " + line);
                     }
                 }
             }
 
-            // Successful data read
-            System.err.println("Map data loaded succesfully");
+            System.err.println("Map data loaded successfully");
         } catch (IOException e) {
             System.err.println("Could not read the file " + filePath);
-            System.err.println("Make sure the file exists in the correct directory it should be in /utils per default");
+            System.err.println("Make sure the file exists in the correct directory; it should be in /utils by default");
         }
     }
 
     public static void loadWalkData(String filePath, MetrolinkGraph graph) {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String headerLine = br.readLine(); // read header row
-
+            String headerLine = br.readLine();
             if (headerLine == null) {
                 return;
             }
 
-            String[] headerStations = headerLine.split(",", -1); // array holds all our destination stations
+            String[] headerStations = headerLine.split(",", -1); // destination stations, by column
             String line;
 
             while ((line = br.readLine()) != null) {
@@ -70,30 +66,26 @@ public class ReadMap {
                     continue;
                 }
                 String[] columns = line.split(",", -1);
-                String startStation = columns[0].trim(); // the very first row is our start station
+                String startStation = columns[0].trim(); // first column is the start station for this row
 
-                // loop through the rest of columns
                 for (int i = 1; i < columns.length; i++) {
-                    String timeStr = columns[i].trim(); // grab walking time
+                    String timeStr = columns[i].trim();
+                    if (timeStr.isEmpty()) {
+                        continue; // no walking time recorded between these two stations
+                    }
 
-                    if (!timeStr.isEmpty()) {
-                        try {
-                            // convert text
-                            double walkingTime = Double.parseDouble(timeStr);
-
-                            // loop index to look back up at the header array
-                            String endStation = headerStations[i].trim();
-
-                            // add the connnection to our graph
-                            // now the program knows what "line" is walking and not an actual train line
-                            graph.addConnection(startStation, endStation, "walking", walkingTime);
-                        } catch (NumberFormatException e) {
-                            // ignore empty cells
-                        }
+                    try {
+                        double walkingTime = Double.parseDouble(timeStr);
+                        String endStation = headerStations[i].trim();
+                        // "walking" is used as the line name so the rest of the app can
+                        // tell a walked leg apart from a leg taken by train
+                        graph.addConnection(startStation, endStation, "walking", walkingTime);
+                    } catch (NumberFormatException e) {
+                        // not a number: ignore the cell
                     }
                 }
             }
-            System.out.println("Walking data loaded succesfully");
+            System.out.println("Walking data loaded successfully");
         } catch (IOException e) {
             System.err.println("Could not read the walking file " + filePath);
         }

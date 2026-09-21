@@ -1,73 +1,69 @@
 package modules;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 public class MetrolinkDijkstra {
 
-    // Pathfinding algorithm
-    // Since i have to allow the users to decide wether they want the fastest route or the one with least changes
-    // Added a new parameter for fewest changes
-    public static RouteState findShortestRoute(MetrolinkGraph graph, String startStation, String endStation, boolean optimisedRoute) {
+    // The per-line-change time penalty added when a route switches lines.
+    // Encourages the algorithm to prefer routes with fewer changes when
+    // times are otherwise close, without a full second cost function.
+    private static final double LINE_CHANGE_PENALTY_MINUTES = 2.0;
 
-        // Dont start if the start or end is closed
-        if (graph.isClosed(startStation)) {
-            System.out.println("\n[Error] The start station is currently closed");
+    // Since users can choose between the fastest route or the one with the
+    // fewest changes, optimisedRoute selects which cost function to use.
+    public static RouteState findShortestRoute(
+            MetrolinkGraph graph,
+            String startStation,
+            String endStation,
+            boolean optimisedRoute,
+            RouteConstraints constraints) {
+
+        if (constraints.isClosed(startStation)) {
             return null;
         }
-
-        if (graph.isClosed(endStation)) {
-            System.out.println("\n [Error] THe end station is currently closed");
+        if (constraints.isClosed(endStation)) {
             return null;
         }
 
         PriorityQueue<RouteState> queue = new PriorityQueue<>();
 
-        // Tracks minimum time to reach a station + line
-        // allows the algorithm to visit a station twice if its on a different line or we have to backtrack
+        // Tracks the minimum cost to reach a station on a given line, so the
+        // algorithm can revisit a station if arriving via a different line
+        // (or after backtracking) turns out cheaper.
         Map<String, Double> minCost = new HashMap<>();
 
-        // Start with - time and 0 line
         queue.add(new RouteState(startStation, null, 0.0, 0.0, 0, null));
-
-        RouteState finalState = null;
 
         while (!queue.isEmpty()) {
             RouteState current = queue.poll();
 
-            // Break condition = we found the fastest route
             if (current.station.equals(endStation)) {
                 return current;
             }
 
-            // Check neigbouring stations
             for (MetrolinkGraph.Connection conn : graph.getConnections(current.station)) {
-                if (graph.isClosed(conn.destination)) {
-                    continue; // changed to skip closed stations
+                if (constraints.isClosed(conn.destination)) {
+                    continue;
                 }
 
-                double travelTime = graph.getActualTime(current.station, conn.destination, conn.time); // get actual time 
+                double travelTime = constraints.getActualTime(current.station, conn.destination, conn.time);
                 int newChanges = current.changes;
 
-                // add penalty for change, (TEST)
-                if (current.line != null && !current.line.equals(conn.line)) {
-                    travelTime += 2.0; //TODO: Change 
+                boolean isLineChange = current.line != null && !current.line.equals(conn.line);
+                if (isLineChange) {
+                    travelTime += LINE_CHANGE_PENALTY_MINUTES;
                     newChanges++;
                 }
 
                 double newActualTime = current.actualTime + travelTime;
-                double newTotalCost;
-
-                // Calculate cost to determine if its optimised or not
-                if (optimisedRoute) {
-                    newTotalCost = newActualTime;
-                } else {
-                    // break ties happening if two routes have 0 changes
-                    newTotalCost = newChanges;
-                }
+                double newTotalCost = optimisedRoute ? newActualTime : newChanges;
 
                 String stateKey = conn.destination + "_" + conn.line;
 
-                // if this is the fastest way we found for this station-line
+                // Only enqueue this station-line pair again if we've found a
+                // cheaper way to reach it than any previous route did.
                 if (newTotalCost < minCost.getOrDefault(stateKey, Double.MAX_VALUE)) {
                     minCost.put(stateKey, newTotalCost);
                     queue.add(new RouteState(conn.destination, conn.line, newTotalCost, newActualTime, newChanges, current));

@@ -2,12 +2,12 @@ package modules;
 
 public class RouteState implements Comparable<RouteState> {
 
-    String station;
-    String line; // line used to arrive to this station
-    double totalCost; // Renamed since time changes based on the method selected - time taken to get here so far
-    double actualTime; // The actual time taken for the final output
-    RouteState previous; // To reconstruct path backward if needed
-    int changes; // Number of line changes made
+    public final String station;
+    public final String line; // line used to arrive to this station
+    public final double totalCost; // cost used for comparison (meaning depends on optimisedRoute)
+    public final double actualTime; // actual cumulative travel time, for display
+    public final RouteState previous; // to reconstruct the path backward
+    public final int changes; // number of line changes made so far
 
     public RouteState(String station, String line, double totalCost, double actualTime, int changes, RouteState previous) {
         this.station = station;
@@ -18,15 +18,14 @@ public class RouteState implements Comparable<RouteState> {
         this.previous = previous;
     }
 
-    @Override // for safety
+    @Override
     public int compareTo(RouteState other) {
         int costCompare = Double.compare(this.totalCost, other.totalCost);
-
-        // tie breaker, if we have two routes with the same cost
-        if (costCompare == 0) {
-            return Double.compare(this.actualTime, other.actualTime);
+        if (costCompare != 0) {
+            return costCompare;
         }
-
-        return costCompare;
+        // tie-break on actual time when two routes have equal cost
+        // (e.g. two routes with the same number of changes)
+        return Double.compare(this.actualTime, other.actualTime);
     }
 }

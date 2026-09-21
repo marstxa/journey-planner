@@ -1,13 +1,24 @@
 package modules;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * The Metrolink network's topology: which stations connect to which, on
+ * which line, and how long each leg takes.
+ *
+ * This is populated once at startup by ReadMap and never mutated again —
+ * it holds no per-request state (closed stations, delays). That used to
+ * live here, but a Spring-managed instance of this class is shared across
+ * every concurrent request, so mutating it per-request was a race
+ * condition. Per-request state now lives in RouteConstraints instead,
+ * built fresh for each call and passed into MetrolinkDijkstra directly.
+ */
 public class MetrolinkGraph {
-    // core data structure
 
     public static class Connection {
-
-        // constants
         public final String destination;
         public final String line;
         public final double time;
@@ -22,10 +33,6 @@ public class MetrolinkGraph {
     // Graph that maps a station name to a list of connections
     private final Map<String, List<Connection>> network = new HashMap<>();
 
-    // list of custom closed stations and custom delays
-    private final Set<String> closedStations = new HashSet<>();
-    private final Map<String, Double> customDelays = new HashMap<>();
-
     public void addConnection(String from, String to, String line, double time) {
         network.putIfAbsent(from, new ArrayList<>());
         network.putIfAbsent(to, new ArrayList<>());
@@ -37,25 +44,5 @@ public class MetrolinkGraph {
 
     public List<Connection> getConnections(String station) {
         return network.getOrDefault(station, new ArrayList<>());
-    }
-
-    // method to close stations
-    public void closeStation(String station) {
-        closedStations.add(station);
-    }
-
-    // method to add custom delays
-    public void addDelay(String from, String to, double newTime) {
-        customDelays.put(from + "-" + to, newTime);
-        customDelays.put(to + "-" + from, newTime);
-    }
-
-    // return true if station is closed
-    public boolean isClosed(String station) {
-        return closedStations.contains(station);
-    }
-
-    public double getActualTime(String from, String to, double normalTime) {
-        return customDelays.getOrDefault(from + "-" + to, normalTime);
     }
 }

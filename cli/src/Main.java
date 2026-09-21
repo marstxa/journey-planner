@@ -1,6 +1,6 @@
-
 import java.util.HashSet;
 import java.util.Set;
+
 import modules.GetJourney;
 import modules.MetrolinkGraph;
 import modules.ReadMap;
@@ -8,13 +8,11 @@ import modules.ReadMap;
 public class Main {
 
     public static void main(String[] args) {
-        // Initialise data structures
         MetrolinkGraph graph = new MetrolinkGraph();
-        Set<String> validStations = new HashSet<>(); // hold valid stations in a set
+        Set<String> validStations = new HashSet<>();
 
-        // Load all data from CSVs 
         String csvPath = "src/utils/Metrolink_times_linecolour(in).csv";
-        ReadMap.loadMapData(csvPath, graph, validStations); // load data and get a set of valid stations
+        ReadMap.loadMapData(csvPath, graph, validStations);
 
         String walkPath = "src/utils/walktimes(in).csv";
         ReadMap.loadWalkData(walkPath, graph);
@@ -24,7 +22,6 @@ public class Main {
             return;
         }
 
-        // Call interface
         GetJourney.start(graph, validStations);
     }
 }
