@@ -7,7 +7,7 @@ export default function Navbar() {
             <div className="flex-1 flex items-center gap-2">
                 <img
                     src={logo}
-                    alt="logo"
+                    alt="Manchester Metrolink logo"
                     className="h-8 w-auto object-contain"
                 />
                 <span className="text-md text-neutral">
@@ -16,12 +16,17 @@ export default function Navbar() {
                 </span>
             </div>
 
-            {/*Github link*/}
+            {/* GitHub link — opens in a new tab so it doesn't navigate away from the live demo */}
             <div className="flex-none">
-                <a href="https://github.com/marstxa">
+                <a
+                    href="https://github.com/marstxa"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="View source on GitHub"
+                >
                     <div className="avatar">
                         <div className="w-10 rounded-full border-2 border-base-200">
-                            <img src={profile} alt="profile" />
+                            <img src={profile} alt="Developer profile picture" />
                         </div>
                     </div>
                 </a>

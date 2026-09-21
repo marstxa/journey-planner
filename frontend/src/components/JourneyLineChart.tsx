@@ -1,13 +1,13 @@
-import React from "react";
 import {
-    Chart as ChartJS,
     CategoryScale,
+    Chart as ChartJS,
+    Legend,
     LinearScale,
-    PointElement,
     LineElement,
+    PointElement,
     Title,
     Tooltip,
-    Legend,
+    type TooltipItem,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 
@@ -32,8 +32,11 @@ interface Props {
     fewestPath: RouteStep[];
 }
 
+const FASTEST_LABEL = "Fastest Time Route";
+const FEWEST_LABEL = "Fewest Changes Route";
+
 export default function JourneyLineChart({ fastestPath, fewestPath }: Props) {
-    // get the route with the must stops
+    // get the route with the most stops
     const maxStops = Math.max(fastestPath.length, fewestPath.length);
     const labels = Array.from({ length: maxStops }, (_, i) =>
         i === 0 ? "Start" : `Stop ${i}`,
@@ -47,7 +50,7 @@ export default function JourneyLineChart({ fastestPath, fewestPath }: Props) {
         labels: labels,
         datasets: [
             {
-                label: "Fastest Time Route",
+                label: FASTEST_LABEL,
                 data: fastestTimes,
                 borderColor: "rgba(45, 196, 155, 1)",
                 backgroundColor: "rgba(45, 196, 155, 1)",
@@ -56,7 +59,7 @@ export default function JourneyLineChart({ fastestPath, fewestPath }: Props) {
                 pointRadius: 5,
             },
             {
-                label: "Fewest Changes Route",
+                label: FEWEST_LABEL,
                 data: fewestTimes,
                 borderColor: "rgba(238, 175, 197, 1)",
                 backgroundColor: "rgba(238, 175, 197, 1)",
@@ -79,8 +82,12 @@ export default function JourneyLineChart({ fastestPath, fewestPath }: Props) {
             },
             tooltip: {
                 callbacks: {
-                    label: function (context: any) {
-                        const isFastest = context.datasetIndex === 0;
+                    // Previously used context.datasetIndex === 0 to pick which path
+                    // a point belonged to, which silently breaks if the datasets
+                    // array above is ever reordered. Matching on the dataset's own
+                    // label ties it directly to the data it's rendering instead.
+                    label: function (context: TooltipItem<"line">) {
+                        const isFastest = context.dataset.label === FASTEST_LABEL;
                         const path = isFastest ? fastestPath : fewestPath;
                         const stepIndex = context.dataIndex;
 

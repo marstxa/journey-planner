@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
 import axios from "axios";
+import { useState } from "react";
 import JourneyBarChart from "./JourneyBarChart";
 
 // toast library
 import { ToastContainer, toast } from "react-toastify";
 import JourneyLineChart from "./JourneyLineChart";
+
 interface RouteStep {
     station: string;
     line: string;
@@ -17,9 +18,13 @@ interface RouteData {
     path: RouteStep[];
 }
 
-interface ApiResponse {
+interface ApiErrorResponse {
     error: string;
 }
+
+// Falls back to localhost for local dev; set VITE_API_BASE_URL in .env
+// for any other environment (staging, production, etc).
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 // line colors for ui
 const getStepColorClass = (line: string) => {
@@ -66,50 +71,52 @@ export default function JourneyPlanner() {
     const [delayTime, setDelayTime] = useState<number>(0);
 
     // results state
-    const [routeData, setRouteData] = useState<RouteData | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    // get which path to show in the UI based on radio button
+    // get which path to show in the UI based on radio button.
+    // Toggling this never needs a refetch: handleSearch always fetches both
+    // options in one go, so switching here just changes which already-fetched
+    // result is displayed.
     const currentRouteData = optimisedRoute ? fastestPath : fewChangesPath;
 
-    useEffect(() => {
-        // only search if user has actually typed stations
-        if (start !== "" && end !== "") {
-            handleSearch();
-        }
-    }, [optimisedRoute]);
-
     // form event
-    const handleSearch = async () => {
+    const handleSearch = async (e?: React.FormEvent<HTMLFormElement>) => {
+        e?.preventDefault();
+
+        const trimmedStart = start.trim();
+        const trimmedEnd = end.trim();
+
+        if (trimmedStart.toLowerCase() === trimmedEnd.toLowerCase()) {
+            const msg = "Start and destination stations can't be the same.";
+            setError(msg);
+            toast.error(msg);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
-        setRouteData(null);
 
         // call API
         try {
             const baseParams = {
-                start: start,
-                end: end,
-                station: closedStation,
-                delayFrom: delayFrom,
-                delayTo: delayTo,
+                start: trimmedStart,
+                end: trimmedEnd,
+                station: closedStation.trim(),
+                delayFrom: delayFrom.trim(),
+                delayTo: delayTo.trim(),
                 delayTime: delayTime,
             };
 
-            // call api twice
+            // call api twice, once per route-optimisation strategy
             const [fastestResponse, fewestResponse] = await Promise.all([
                 axios.get<RouteData>(
-                    "http://localhost:8080/api/journey/route",
-                    {
-                        params: { ...baseParams, optimisedRoute: true },
-                    },
+                    `${API_BASE_URL}/api/journey/route`,
+                    { params: { ...baseParams, optimisedRoute: true } },
                 ),
                 axios.get<RouteData>(
-                    "http://localhost:8080/api/journey/route",
-                    {
-                        params: { ...baseParams, optimisedRoute: false },
-                    },
+                    `${API_BASE_URL}/api/journey/route`,
+                    { params: { ...baseParams, optimisedRoute: false } },
                 ),
             ]);
 
@@ -125,16 +132,28 @@ export default function JourneyPlanner() {
             }
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
-                const backendError = err.response?.data as ApiResponse;
+                const backendError = err.response?.data as ApiErrorResponse;
                 const errorMsg =
                     backendError?.error || "Could not find a route.";
                 setError(errorMsg);
                 toast.error(errorMsg);
             } else if (err instanceof Error) {
                 setError(err.message);
+                toast.error(err.message);
             }
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleDelayTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.value === "") {
+            setDelayTime(0);
+            return;
+        }
+        const parsed = parseInt(e.target.value, 10);
+        if (!Number.isNaN(parsed)) {
+            setDelayTime(Math.max(0, parsed));
         }
     };
 
@@ -151,7 +170,7 @@ export default function JourneyPlanner() {
                         Plan Your Journey
                     </h2>
 
-                    <form action={handleSearch} className="flex flex-col gap-4">
+                    <form onSubmit={handleSearch} className="flex flex-col gap-4">
                         <div className="flex flex-col md:flex-row gap-4">
                             <input
                                 type="text"
@@ -162,7 +181,7 @@ export default function JourneyPlanner() {
                                 onChange={(
                                     e: React.ChangeEvent<HTMLInputElement>,
                                 ) => setStart(e.target.value)}
-                            ></input>
+                            />
 
                             <input
                                 type="text"
@@ -173,7 +192,7 @@ export default function JourneyPlanner() {
                                 onChange={(
                                     e: React.ChangeEvent<HTMLInputElement>,
                                 ) => setEnd(e.target.value)}
-                            ></input>
+                            />
                         </div>
 
                         {/* DELAYS MENU */}
@@ -233,11 +252,7 @@ export default function JourneyPlanner() {
                                             value={
                                                 delayTime === 0 ? "" : delayTime
                                             }
-                                            onChange={(e) =>
-                                                setDelayTime(
-                                                    parseInt(e.target.value),
-                                                )
-                                            }
+                                            onChange={handleDelayTimeChange}
                                         />
                                     </div>
                                 </div>
@@ -292,6 +307,12 @@ export default function JourneyPlanner() {
                     </form>
                 </div>
             </div>
+
+            {error && (
+                <div role="alert" className="alert alert-error mb-8">
+                    <span>{error}</span>
+                </div>
+            )}
 
             {/* DISPLAY RESULTS */}
             {currentRouteData && fastestPath && fewChangesPath && (
